@@ -54,6 +54,8 @@ class SignupWindow(tk.Frame):
 
         if password != confirm_password:
             self.status_label.config(text="Passwords do not match\n")
+        elif len(username) < 3:
+            self.status_label.config(text="Username must be at least 3 chars long\n")
         elif not self.is_valid_email(email):
             self.status_label.config(text="Email is not the correct format\n")
         elif self.db.check_if_username_exist(username):

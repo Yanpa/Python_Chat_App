@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
-import threading
+import time
 
 from Database import Database
 from AccountPage import Account
@@ -15,8 +15,6 @@ class ChatPage(tk.Frame):
         self.username = username
 
         self.db = Database()
-        # self.update_timer = threading.Timer(1, self.show_chat_with_friend(selected_friend))
-        # self.update_timer.start()
 
         header_frame = tk.Frame(self, height=60)
         header_frame.pack(fill="x")
@@ -39,7 +37,7 @@ class ChatPage(tk.Frame):
             friend_name_label = tk.Label(friend_frame, text=friend, font=("Helvetica", 14))
             friend_name_label.pack(side="left", padx=10, pady=10)
 
-            friend_frame.bind("<Button-1>", lambda event, name=friend: self.show_chat_with_friend(name))
+            friend_frame.bind("<Button-1>", lambda event, name=friend: self.update_chat_history(name))
 
         add_friend_button = ttk.Button(sidebar_frame, text="Account", command=self.show_account_frame)
         add_friend_button.pack(side="bottom", pady=10)
@@ -65,18 +63,20 @@ class ChatPage(tk.Frame):
     def show_account_frame(self):
         Account(self, self.db.get_user_info_by_username(self.username))
 
-    def show_chat_with_friend(self, friend_name):
-        global selected_friend
-        selected_friend = friend_name
-        
-        self.user_label.config(text=f"You talk with {friend_name}")
+    def show_chat_with_friend(self, name):
+        self.user_label.config(text=f"You talk with {name}")
         self.message_entry.config(state="normal")
         self.chat_history.config(state="normal")
         self.chat_history.delete("1.0", "end")
-        
-        self.db.show_updated_chat(selected_friend, self.chat_history)
-        
-        self.chat_history.config(state="disabled")
+
+        self.db.show_updated_chat(name, self.chat_history)
+
+    def update_chat_history(self, friend_name):
+        global selected_friend
+        selected_friend = friend_name
+
+        self.show_chat_with_friend(selected_friend)
+        self.after(1000, self.update_chat_history, friend_name)  # Update every 1000ms (1 second)
         
     def send_message(self, message_entry, chat_history):
         global selected_friend
