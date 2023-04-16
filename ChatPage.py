@@ -2,12 +2,18 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 import psycopg2
+import threading
 
 class ChatPage(tk.Frame):
+    global selected_friend
+
     def __init__(self, master, username):
         master.title(f"Chat App - {username}")
         tk.Frame.__init__(self, master)
         self.username = username
+
+        # self.update_timer = threading.Timer(1, self.show_chat_with_friend(selected_friend))
+        # self.update_timer.start()
 
         # Connect to the PostgresDB
         self.conn = psycopg2.connect(
@@ -71,7 +77,7 @@ class ChatPage(tk.Frame):
 
         # Create a button to add a friend
         add_friend_button = ttk.Button(sidebar_frame, text="Add friend", command=self.show_add_friend_frame)
-        add_friend_button.pack(side="bottom",pady=10)
+        add_friend_button.pack(side="left",pady=10)
 
         # Create the chat history
         chat_frame = tk.Frame(self)
@@ -129,28 +135,55 @@ class ChatPage(tk.Frame):
             else:
                 self.cur.execute("INSERT INTO friends (user_id, friend_id) VALUES (%s, %s)", (self.current_user_info[0], new_friend[0]))
                 self.conn.commit()
-                self.cur.close()
-                self.conn.close()
                 add_friend_window.destroy()     
-
-            self.cur.close()
-            self.conn.close()       
-
+  
 
     def show_chat_with_friend(self, friend_name):
-        self.user_label.config(text=f"You talk with {friend_name}")
+        global selected_friend
+        selected_friend = friend_name
+        
+        # self.user_label.config(text=f"You talk with {friend_name}")
         self.message_entry.config(state="normal")
         self.chat_history.config(state="normal")
         self.chat_history.delete("1.0", "end")
-        self.chat_history.insert("end", f"Showing chat with {friend_name}\n\n")
+        
+        try:
+            self.cur.execute("SELECT id FROM users WHERE username = %s", (selected_friend,))
+            friend_id = self.cur.fetchone()
+            
+            self.cur.execute("SELECT sender_id, message, timestamp FROM messages WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY timestamp ASC", (self.current_user_info[0], friend_id[0], friend_id[0], self.current_user_info[0]))
+            rows = self.cur.fetchall()
+            for row in rows:
+                sender_id, message, timestamp = row
+                if sender_id == self.current_user_info[0]:
+                    self.chat_history.insert("end", f"You: {message}\n", "right")
+                else:
+                    self.chat_history.insert("end", f"{friend_name}: {message}\n")
+                # self.chat_history.insert("end", f"({timestamp})\n\n")
+        except (Exception, psycopg2.Error) as error:
+            print(f"Error while fetching chat history: {error}")
+            self.chat_history.insert("end", f"Error while fetching chat history: {error}\n")
+        
         self.chat_history.config(state="disabled")
+        # self.update_timer.start()
+        
+
 
     def send_message(self, message_entry, chat_history):
+        global selected_friend
+        self.cur.execute("SELECT id FROM users WHERE username = %s", (selected_friend,))
+        friend_id = self.cur.fetchone()
+
         message = message_entry.get().strip()
         if message:
+            self.cur.execute("INSERT INTO messages (sender_id, receiver_id, message) VALUES (%s, %s, %s)", (self.current_user_info[0], friend_id[0], message))
+            self.conn.commit()
+
             chat_history.config(state="normal")
             chat_history.insert("end", message + "\n", "right")
             chat_history.config(state="disabled")
             message_entry.delete(0, "end")
 
             chat_history.see("end")
+
+        
