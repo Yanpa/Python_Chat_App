@@ -6,7 +6,7 @@ class ChatApp(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
         self.title("Chat App")
-        self.geometry("450x500")
+        self.geometry("650x500")
         self.resizable(True, True)
         self._frame = None
         self.switch_frame(LandingWindow)
@@ -42,6 +42,7 @@ class ChatApp(tk.Tk):
             self._frame.destroy()
         self._frame = new_frame
         self._frame.pack()
+
 
 
 class LandingWindow(tk.Frame):
