@@ -4,6 +4,7 @@ from tkinter.scrolledtext import ScrolledText
 import threading
 
 from Database import Database
+from AccountPage import Account
 
 class ChatPage(tk.Frame):
     global selected_friend
@@ -26,32 +27,22 @@ class ChatPage(tk.Frame):
         sidebar_frame = tk.Frame(self)
         sidebar_frame.pack(fill="y", side="left")
 
-        canvas = tk.Canvas(sidebar_frame)
-        canvas.pack(side="left", fill="y")
-
-        scrollbar = tk.Scrollbar(sidebar_frame, orient="vertical", command=canvas.yview)
-        scrollbar.pack(side="right", fill="y")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        friends_frame = tk.LabelFrame(canvas, text="Friends list")
-        canvas.create_window((0, 0), window=friends_frame, anchor='nw')
+        friends_frame = tk.LabelFrame(sidebar_frame, text="Friends list")
+        friends_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         friends = self.db.return_all_users_friends(self.username)
 
         for friend in friends:
-            friend_frame = tk.Frame(friends_frame, height=60, width=200)
+            friend_frame = tk.Frame(friends_frame, height=60)
             friend_frame.pack(fill="x")
 
-            friend_name_label = tk.Label(friend_frame, text=friend[0], font=("Helvetica", 14))
+            friend_name_label = tk.Label(friend_frame, text=friend, font=("Helvetica", 14))
             friend_name_label.pack(side="left", padx=10, pady=10)
 
-            friend_frame.bind("<Button-1>", lambda event, name=friend[0]: self.show_chat_with_friend(name))
+            friend_frame.bind("<Button-1>", lambda event, name=friend: self.show_chat_with_friend(name))
 
-        friends_frame.update_idletasks()
-        canvas.config(scrollregion=canvas.bbox("all"))
-
-        add_friend_button = ttk.Button(sidebar_frame, text="Add friend", command=self.show_add_friend_frame)
-        add_friend_button.pack(side="left",pady=10)
+        add_friend_button = ttk.Button(sidebar_frame, text="Account", command=self.show_account_frame)
+        add_friend_button.pack(side="bottom", pady=10)
 
         chat_frame = tk.Frame(self)
         chat_frame.pack(fill="both", expand=True)
@@ -71,25 +62,8 @@ class ChatPage(tk.Frame):
 
         self.message_entry.bind("<Return>", lambda event: self.send_message(self.message_entry, self.chat_history))
 
-    def show_add_friend_frame(self):
-        add_friend_window = tk.Toplevel(self)
-        add_friend_window.title("Add Friend")
-
-        add_friend_frame = tk.Frame(add_friend_window)
-        add_friend_frame.pack(fill="both", expand=True)
-
-        username_label = tk.Label(add_friend_frame, text="Username:")
-        username_label.pack(side="left", padx=10, pady=10)
-
-        username_entry = tk.Entry(add_friend_frame)
-        username_entry.pack(side="left", padx=10, pady=10)
-
-        add_button = ttk.Button(add_friend_frame, text="Add",
-                                command=lambda: self.db.add_friend(username_entry.get(), add_friend_window))
-        add_button.pack(side="left", padx=10, pady=10)
-
-        cancel_button = ttk.Button(add_friend_frame, text="Cancel", command=add_friend_window.destroy)
-        cancel_button.pack(side="left", padx=10, pady=10)
+    def show_account_frame(self):
+        Account(self, self.db.get_user_info_by_username(self.username))
 
     def show_chat_with_friend(self, friend_name):
         global selected_friend
@@ -104,7 +78,6 @@ class ChatPage(tk.Frame):
         
         self.chat_history.config(state="disabled")
         
-
     def send_message(self, message_entry, chat_history):
         global selected_friend
         message = message_entry.get().strip()

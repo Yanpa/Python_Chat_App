@@ -19,12 +19,23 @@ class Database:
         self.cur.close()
         self.conn.close()
 
-    def check_user_credentials(self, username, password):
-        self.cur.execute('SELECT * FROM users WHERE username=%s AND password=%s', (username, password))
-        
+    def get_user_info_by_username(self, username):
+        self.cur.execute('SELECT * FROM users WHERE username=%s', (username, ))
         user = self.cur.fetchone()
 
         return user
+
+    def check_user_credentials(self, username, password):
+        self.cur.execute('SELECT * FROM users WHERE username=%s AND password=%s', (username, password))
+        user = self.cur.fetchone()
+
+        return user
+    
+    def get_user_id_by_username(self, username):
+        self.cur.execute('SELECT id FROM users WHERE username=%s', (username, ))
+        user = self.cur.fetchone()
+
+        return user[0]
     
     def check_if_username_exist(self, username):
         self.cur.execute("SELECT * FROM users WHERE username = %s", (username,))
@@ -38,7 +49,6 @@ class Database:
         self.cur.execute("INSERT INTO users (username, email, password) VALUES (%s, %s, %s)", (username, email, password))
         self.commit_to_db()
 
-
     def return_all_users_friends(self, username):
         self.cur.execute("SELECT * FROM users WHERE username = %s", (username,))
         self.current_user_info = self.cur.fetchone()
@@ -49,11 +59,12 @@ class Database:
         friends = []
         for friend_id in friend_ids:
             self.cur.execute("SELECT username FROM users WHERE id = %s", (friend_id[0],))
-            friends.append(self.cur.fetchone())
+            friend = self.cur.fetchone()
+            friends.append(friend[0])
 
         return friends
     
-    def add_friend(self, username, toplevel):
+    def add_friend(self, username):
         self.cur.execute("SELECT * FROM users WHERE username = %s", (username,))
         new_friend = self.cur.fetchone()
 
@@ -61,12 +72,27 @@ class Database:
             return 
         else:
             self.cur.execute("INSERT INTO friends (user_id, friend_id) VALUES (%s, %s)", (self.current_user_info[0], new_friend[0]))
-            self.conn.commit()
-
-            toplevel.destroy()
-
-            return True
+            self.commit_to_db()
             
+            self.cur.execute("INSERT INTO friends (user_id, friend_id) VALUES (%s, %s)", (new_friend[0], self.current_user_info[0]))
+            self.commit_to_db()
+
+    def remove_friend(self, user_id, friend_id):
+        self.cur.execute("DELETE FROM friends WHERE user_id = %s AND friend_id = %s", (user_id, friend_id))
+        self.conn.commit()
+
+        self.cur.execute("DELETE FROM friends WHERE user_id = %s AND friend_id = %s", (friend_id, user_id))
+        self.conn.commit()
+
+    def are_friends(self, user_id, friend_id):
+        self.cur.execute("SELECT * FROM friends WHERE (user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s)", (user_id, friend_id, friend_id, user_id))
+
+        result = self.cur.fetchone()
+
+        if result:
+            return True
+        else:
+            return False
 
     def show_updated_chat(self, selected_friend, chat_history):
         try:
@@ -85,10 +111,9 @@ class Database:
             print(f"Error while fetching chat history: {error}")
             self.chat_history.insert("end", f"Error while fetching chat history: {error}\n")
 
-
     def import_message_in_db(self, receiver, message):
         self.cur.execute("SELECT id FROM users WHERE username = %s", (receiver,))
         friend_id = self.cur.fetchone()
 
         self.cur.execute("INSERT INTO messages (sender_id, receiver_id, message) VALUES (%s, %s, %s)", (self.current_user_info[0], friend_id[0], message))
-        self.commit_to_db()
+        self.conn.commit()
