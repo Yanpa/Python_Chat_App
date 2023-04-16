@@ -35,7 +35,6 @@ class ChatApp(tk.Tk):
         frame.winfo_toplevel().geometry(f'+{x}+{y}')
 
     def switch_frame(self, frame_class: tk.Frame):
-        """Destroys current frame and replaces it with a new one."""
         new_frame = frame_class(self)
         if self._frame is not None:
             self._frame.pack_forget()

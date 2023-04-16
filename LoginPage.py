@@ -1,11 +1,13 @@
 import tkinter as tk
-import psycopg2
 from ChatPage import ChatPage
+from Database import Database
 
 class LoginWindow(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
         self.pack(expand=True)
+
+        self.db = Database()
 
         self.username_label = tk.Label(self, text="Username:")
         self.username_label.pack()
@@ -23,7 +25,6 @@ class LoginWindow(tk.Frame):
         self.login_button = tk.Button(self, text="Login", command=self.login)
         self.login_button.pack(pady=5)
 
-        # Back to home screen label
         back_label = tk.Label(self, text="Back to home screen", cursor="hand2")
         back_label.pack(side="bottom", pady=10)
         back_label.bind("<Button-1>", self.go_to_home)
@@ -34,21 +35,8 @@ class LoginWindow(tk.Frame):
         username = self.username_entry.get()
         password = self.password_entry.get()
 
-        conn = psycopg2.connect(
-            dbname="chatapp",
-            user="panayotyanev",
-            password="123",
-            host="localhost",
-            port="5432"
-        )
-
-        c = conn.cursor()
-
-        c.execute('SELECT * FROM users WHERE username=%s AND password=%s', (username, password))
-        user = c.fetchone()
-
-        conn.close()
-
+        user = self.db.check_user_credentials(username, password)
+        
         if user:
             self.destroy()
 
