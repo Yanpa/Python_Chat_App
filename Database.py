@@ -107,9 +107,11 @@ class Database:
                     chat_history.insert("end", "You:\n{: <8}{}\n\n".format("", message), "right")
                 else:
                     chat_history.insert("end", f"{selected_friend}:\n\t{message}\n\n")
+
+            chat_history.see("end")
         except (Exception, psycopg2.Error) as error:
             print(f"Error while fetching chat history: {error}")
-            self.chat_history.insert("end", f"Error while fetching chat history: {error}\n")
+            chat_history.insert("end", f"Error while fetching chat history: {error}\n")
 
     def import_message_in_db(self, receiver, message):
         self.cur.execute("SELECT id FROM users WHERE username = %s", (receiver,))
