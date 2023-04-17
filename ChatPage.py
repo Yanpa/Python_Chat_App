@@ -1,18 +1,18 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
-import time
 
 from Database import Database
 from AccountPage import Account
 
 class ChatPage(tk.Frame):
-    global selected_friend
 
     def __init__(self, master, username):
         master.title(f"Chat App - {username}")
         tk.Frame.__init__(self, master)
+
         self.username = username
+        self.selected_friend = None
 
         self.db = Database()
 
@@ -28,19 +28,10 @@ class ChatPage(tk.Frame):
         friends_frame = tk.LabelFrame(sidebar_frame, text="Friends list")
         friends_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        friends = self.db.return_all_users_friends(self.username)
+        self.populate_friends_frame(friends_frame)
 
-        for friend in friends:
-            friend_frame = tk.Frame(friends_frame, height=60)
-            friend_frame.pack(fill="x")
-
-            friend_name_label = tk.Label(friend_frame, text=friend, font=("Helvetica", 14))
-            friend_name_label.pack(side="left", padx=10, pady=10)
-
-            friend_frame.bind("<Button-1>", lambda event, name=friend: self.update_chat_history(name))
-
-        add_friend_button = ttk.Button(sidebar_frame, text="Account", command=self.show_account_frame)
-        add_friend_button.pack(side="bottom", pady=10)
+        account_button = ttk.Button(sidebar_frame, text="Account", command=self.show_account_frame)
+        account_button.pack(side="bottom", pady=10)
 
         chat_frame = tk.Frame(self)
         chat_frame.pack(fill="both", expand=True)
@@ -60,34 +51,50 @@ class ChatPage(tk.Frame):
 
         self.message_entry.bind("<Return>", lambda event: self.send_message(self.message_entry, self.chat_history))
 
+    def populate_friends_frame(self, frame):
+        for widget in frame.winfo_children():
+            widget.destroy()
+
+        friends = self.db.return_all_users_friends(self.username)
+
+        for friend in friends:
+            friend_frame = tk.Frame(frame, height=60)
+            friend_frame.pack(fill="x")
+
+            friend_name_button = ttk.Button(friend_frame, text=friend, command=lambda friend=friend: self.select_friend(friend))
+            friend_name_button.pack(side="left", padx=10, pady=10)
+
+        self.after(1000, self.populate_friends_frame, frame)
+
     def show_account_frame(self):
         Account(self, self.db.get_user_info_by_username(self.username))
 
-    def show_chat_with_friend(self, name):
-        self.user_label.config(text=f"You talk with {name}")
+    def select_friend(self, friend):
+        self.selected_friend = friend
+        self.show_chat_with_friend()
+
+    def show_chat_with_friend(self):
+        if self.selected_friend is None:
+            return
+
+        self.user_label.config(text=f"You talk with {self.selected_friend}")
         self.message_entry.config(state="normal")
         self.chat_history.config(state="normal")
         self.chat_history.delete("1.0", "end")
 
-        self.db.show_updated_chat(name, self.chat_history)
+        self.db.show_updated_chat(self.selected_friend, self.chat_history)
 
-    def update_chat_history(self, friend_name):
-        global selected_friend
-        selected_friend = friend_name
+        self.chat_history.config(state="disabled")
 
-        self.show_chat_with_friend(selected_friend)
-        self.after(1000, self.update_chat_history, friend_name)  # Update every 1000ms (1 second)
+        self.after(1000, self.show_chat_with_friend)
         
     def send_message(self, message_entry, chat_history):
-        global selected_friend
         message = message_entry.get().strip()
 
         if message:
-            self.db.import_message_in_db(selected_friend, message)
+            self.db.import_message_in_db(self.selected_friend, message)
 
-            chat_history.config(state="normal")
-            chat_history.insert("end", "You:\n" + message + "\n", "right")
-            chat_history.config(state="disabled")
             message_entry.delete(0, "end")
-
-            chat_history.see("end")
+    
+    def __del__(self):
+        self.db.close_connection()

@@ -119,5 +119,3 @@ class Account():
             self.btn_remove_friend.config(state="disabled")
         else:
             self.btn_remove_friend.config(state="normal")
-
-

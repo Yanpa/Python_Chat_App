@@ -49,3 +49,6 @@ class LoginWindow(tk.Frame):
     def go_to_home(self, event):
         self.master.destroy()
         self.master.__init__()
+
+    def __del__(self):
+        self.db.close_connection()
